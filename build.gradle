@@ -1,6 +1,6 @@
 plugins {
     id 'java-library'
-    id 'org.jetbrains.kotlin.jvm' version '1.9.0'
+    id 'org.jetbrains.kotlin.jvm' version '1.9.22'
     id 'maven-publish'
     id 'signing'
 }
@@ -14,7 +14,7 @@ task compileJavaExamples(type: JavaCompile) {
     description = 'Compile Java example files'
     
     source = fileTree('examples') {
-        include 'CompleteSofizPayExample.java'
+        include '**/*.java'
     }
     destinationDirectory = file('build/examples')
     classpath = sourceSets.main.runtimeClasspath
@@ -34,7 +34,7 @@ task runJavaExample(type: JavaExec) {
     group = 'examples'
     description = 'Run the Java SofizPay example'
     classpath = sourceSets.main.runtimeClasspath + files('build/examples')
-    mainClass = 'com.sofizpay.sdk.CompleteSofizPayExample'
+    mainClass = project.findProperty('mainClass') ?: 'com.sofizpay.sdk.CompleteSofizPayExample'
     workingDir = file('examples')
     dependsOn compileJavaExamples
 }
@@ -58,6 +58,12 @@ task runKotlinExample(type: JavaExec) {
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
 }
 
 // Fix duplicate handling for JAR task

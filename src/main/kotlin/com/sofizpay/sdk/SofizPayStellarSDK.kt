@@ -29,7 +29,10 @@ import java.util.concurrent.*
 import javax.crypto.Cipher
 
 
-class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable {
+class SofizPayStellarSDK(
+    private val isTestnet: Boolean = true,
+    private val isSandbox: Boolean = false
+) : AutoCloseable {
     
     companion object {
         private const val VERSION = "1.0.0-kotlin"
@@ -468,23 +471,42 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
         if (transactionData.email.isNullOrEmpty()) {
             return CIBTransactionResult(false, "Email is required.", null)
         }
+
+        val useSandbox = transactionData.is_sandbox ?: transactionData.isSandbox ?: this.isSandbox
         
         return try {
-            // Build URL with parameters
-            val urlBuilder = StringBuilder("https://www.sofizpay.com/make-cib-transaction?")
+            val baseUrl = if (useSandbox)
+                "https://sofizpay.com/sandbox/make-cib-transaction/?"
+            else
+                "https://www.sofizpay.com/make-cib-transaction/?"
+
+            val urlBuilder = StringBuilder(baseUrl)
             urlBuilder.append("account=").append(java.net.URLEncoder.encode(transactionData.account, "UTF-8"))
             urlBuilder.append("&amount=").append(java.net.URLEncoder.encode(transactionData.amount, "UTF-8"))
             urlBuilder.append("&full_name=").append(java.net.URLEncoder.encode(transactionData.full_name, "UTF-8"))
             urlBuilder.append("&phone=").append(java.net.URLEncoder.encode(transactionData.phone, "UTF-8"))
             urlBuilder.append("&email=").append(java.net.URLEncoder.encode(transactionData.email, "UTF-8"))
             
-            if (!transactionData.memo.isNullOrEmpty()) {
-                urlBuilder.append("&memo=").append(java.net.URLEncoder.encode(transactionData.memo, "UTF-8"))
-            }
             if (!transactionData.return_url.isNullOrEmpty()) {
                 urlBuilder.append("&return_url=").append(java.net.URLEncoder.encode(transactionData.return_url, "UTF-8"))
             }
+            if (!transactionData.webhook_url.isNullOrEmpty()) {
+                urlBuilder.append("&webhook_url=").append(java.net.URLEncoder.encode(transactionData.webhook_url, "UTF-8"))
+            }
+            if (!transactionData.invoice_id.isNullOrEmpty()) {
+                urlBuilder.append("&invoice_id=").append(java.net.URLEncoder.encode(transactionData.invoice_id, "UTF-8"))
+            }
+            if (!transactionData.language.isNullOrEmpty()) {
+                urlBuilder.append("&language=").append(java.net.URLEncoder.encode(transactionData.language, "UTF-8"))
+            }
+            if (!transactionData.memo.isNullOrEmpty()) {
+                urlBuilder.append("&memo=").append(java.net.URLEncoder.encode(transactionData.memo, "UTF-8"))
+            }
             urlBuilder.append("&redirect=").append(if (transactionData.redirect) "yes" else "no")
+
+            if (transactionData.keep_return_url != null) {
+                urlBuilder.append("&keep_return_url=").append(if (transactionData.keep_return_url == true) "True" else "False")
+            }
             
             val fullUrl = urlBuilder.toString()
             
@@ -499,8 +521,31 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
                 
                 if (response.isSuccessful) {
                     @Suppress("UNCHECKED_CAST")
-                    val responseData = gson.fromJson(responseBody, Map::class.java) as Map<String, Any>
-                    CIBTransactionResult(true, "CIB transaction completed successfully", responseData)
+                    val responseData = gson.fromJson(responseBody, Map::class.java) as? Map<String, Any> ?: emptyMap()
+                    
+                    var paymentUrl: String? = responseData["payment_url"]?.toString()
+                    if (paymentUrl == null && responseData["cib_response"] is Map<*, *>) {
+                        val cibResp = responseData["cib_response"] as Map<*, *>
+                        paymentUrl = cibResp["formUrl"]?.toString()
+                    }
+                    val cibTxId = responseData["cib_transaction_id"]?.toString()
+                    val txId = responseData["transaction_id"]?.toString()
+                    val orderId = responseData["order_id"]?.toString()
+                    val webhookUrl = responseData["webhook_url"]?.toString() ?: transactionData.webhook_url
+
+                    val isOk = responseData["status"] != "error" && responseData["success"] != false
+
+                    CIBTransactionResult(
+                        success = isOk,
+                        message = if (isOk) "CIB transaction completed successfully" else "Transaction error",
+                        data = responseData,
+                        payment_url = paymentUrl,
+                        cib_transaction_id = cibTxId,
+                        transaction_id = txId,
+                        order_id = orderId,
+                        webhook_url = webhookUrl,
+                        is_sandbox = useSandbox
+                    )
                 } else {
                     CIBTransactionResult(false, "CIB transaction failed: ${response.code} - $responseBody", null)
                 }
@@ -508,6 +553,49 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
             
         } catch (e: Exception) {
             CIBTransactionResult(false, "Error making CIB transaction: ${e.message}", null)
+        }
+    }
+
+    fun makeSandboxCIBTransaction(transactionData: CIBTransactionData): CIBTransactionResult {
+        transactionData.is_sandbox = true
+        return makeCIBTransaction(transactionData)
+    }
+
+    fun checkCIBStatus(cibTransactionId: String, isSandbox: Boolean? = null): CIBStatusResult {
+        val useSandbox = isSandbox ?: this.isSandbox
+        return _checkCIBStatusRequest(cibTransactionId, useSandbox)
+    }
+
+    fun checkSandboxCIBStatus(cibTransactionId: String): CIBStatusResult {
+        return checkCIBStatus(cibTransactionId, isSandbox = true)
+    }
+
+    private fun _checkCIBStatusRequest(cibTransactionId: String, useSandbox: Boolean): CIBStatusResult {
+        return try {
+            val baseUrl = if (useSandbox)
+                "https://sofizpay.com/sandbox/cib-transaction-check/"
+            else
+                "https://www.sofizpay.com/cib-transaction-check/"
+            val url = "$baseUrl?order_number=" + java.net.URLEncoder.encode(cibTransactionId, "UTF-8")
+
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .addHeader("Accept", "application/json")
+                .build()
+
+            httpClient.newCall(request).execute().use { response ->
+                val responseBody = response.body?.string() ?: ""
+                if (response.isSuccessful) {
+                    @Suppress("UNCHECKED_CAST")
+                    val responseData = gson.fromJson(responseBody, Map::class.java) as? Map<String, Any>
+                    CIBStatusResult(true, "CIB status retrieved successfully", responseData)
+                } else {
+                    CIBStatusResult(false, "Failed to retrieve status: ${response.code} - $responseBody", null)
+                }
+            }
+        } catch (e: Exception) {
+            CIBStatusResult(false, "Error checking CIB status: ${e.message}", null)
         }
     }
     
@@ -559,6 +647,26 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
             
         } catch (e: Exception) {
             System.err.println("Signature verification error: ${e.message}")
+            false
+        }
+    }
+
+    fun verifyWebhookSignature(webhookPayload: Map<String, Any>?): Boolean {
+        if (webhookPayload == null) return false
+        val message = webhookPayload["message"]?.toString() ?: ""
+        val signature = webhookPayload["signature_url_safe"]?.toString()
+            ?: webhookPayload["signature"]?.toString()
+            ?: ""
+        return verifySignature(message, signature)
+    }
+
+    fun verifyWebhookSignature(jsonPayload: String?): Boolean {
+        if (jsonPayload.isNullOrBlank()) return false
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            val payloadMap = gson.fromJson(jsonPayload, Map::class.java) as? Map<String, Any>
+            verifyWebhookSignature(payloadMap)
+        } catch (e: Exception) {
             false
         }
     }
@@ -703,10 +811,28 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
         var email: String? = null,
         var memo: String? = null,
         var return_url: String? = null,
-        var redirect: Boolean = true
+        var webhook_url: String? = null,
+        var invoice_id: String? = null,
+        var language: String? = null,
+        var redirect: Boolean = false,
+        var keep_return_url: Boolean? = null,
+        var is_sandbox: Boolean? = null,
+        var isSandbox: Boolean? = null
     )
     
     data class CIBTransactionResult(
+        val success: Boolean,
+        val message: String,
+        val data: Map<String, Any>?,
+        val payment_url: String? = null,
+        val cib_transaction_id: String? = null,
+        val transaction_id: String? = null,
+        val order_id: String? = null,
+        val webhook_url: String? = null,
+        val is_sandbox: Boolean = false
+    )
+
+    data class CIBStatusResult(
         val success: Boolean,
         val message: String,
         val data: Map<String, Any>?

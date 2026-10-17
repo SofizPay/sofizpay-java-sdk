@@ -35,13 +35,14 @@ import java.time.Instant;
 
 public class SofizPayStellarSDK {
     
-    private static final String VERSION = "1.0.0";
+    private static final String VERSION = "1.1.11";
     private static final String DZT_ASSET_CODE = "DZT";
     private static final String DZT_ISSUER = "GCAZI7YBLIDJWIVEL7ETNAZGPP3LC24NO6KAOBWZHUERXQ7M5BC52DLV";
     
     private final Server server;
     private final Network network;
     private final boolean isTestnet;
+    private final boolean isSandbox;
     
     private final Map<String, StreamInfo> activeStreams = new ConcurrentHashMap<>();
     private final Map<String, TransactionCallback> transactionCallbacks = new ConcurrentHashMap<>();
@@ -63,9 +64,17 @@ public class SofizPayStellarSDK {
         }
     }
     
+    public SofizPayStellarSDK() {
+        this(false, false);
+    }
 
     public SofizPayStellarSDK(boolean useTestnet) {
+        this(useTestnet, useTestnet);
+    }
+
+    public SofizPayStellarSDK(boolean useTestnet, boolean isSandbox) {
         this.isTestnet = useTestnet;
+        this.isSandbox = isSandbox;
         this.httpClient = new OkHttpClient();
         this.gson = new Gson();
         this.streamExecutor = Executors.newScheduledThreadPool(2);
@@ -180,6 +189,24 @@ public class SofizPayStellarSDK {
             return new PaymentResult(false, "Error submitting payment: " + e.getMessage(), null);
         }
     }
+
+    public PaymentResult submit(Map<String, Object> data) {
+        PaymentData pd = new PaymentData();
+        pd.secret = (String) (data.get("secretkey") != null ? data.get("secretkey") : (data.get("secret") != null ? data.get("secret") : data.get("secretKey")));
+        pd.destination = (String) (data.get("destinationPublicKey") != null ? data.get("destinationPublicKey") : (data.get("destination") != null ? data.get("destination") : data.get("to")));
+        pd.amount = String.valueOf(data.get("amount"));
+        pd.memo = data.get("memo") != null ? data.get("memo").toString() : null;
+        return submit(pd);
+    }
+
+    public PaymentResult sendPayment(PaymentData paymentData) {
+        return submit(paymentData);
+    }
+
+    public PaymentResult sendPayment(Map<String, Object> data) {
+        return submit(data);
+    }
+
   
     public TransactionHistoryResult getTransactions(String accountId, int limit) {
         try {
@@ -465,23 +492,42 @@ public class SofizPayStellarSDK {
         if (transactionData.email == null || transactionData.email.isEmpty()) {
             return new CIBTransactionResult(false, "Email is required.", null);
         }
+
+        boolean useSandbox = transactionData.is_sandbox != null ? transactionData.is_sandbox
+                : (transactionData.isSandbox != null ? transactionData.isSandbox : this.isSandbox);
         
         try {
-            // Build URL with parameters
-            StringBuilder urlBuilder = new StringBuilder("https://www.sofizpay.com/make-cib-transaction?");
+            String baseUrl = useSandbox
+                    ? "https://sofizpay.com/sandbox/make-cib-transaction/?"
+                    : "https://www.sofizpay.com/make-cib-transaction/?";
+
+            StringBuilder urlBuilder = new StringBuilder(baseUrl);
             urlBuilder.append("account=").append(java.net.URLEncoder.encode(transactionData.account, "UTF-8"));
             urlBuilder.append("&amount=").append(java.net.URLEncoder.encode(transactionData.amount, "UTF-8"));
             urlBuilder.append("&full_name=").append(java.net.URLEncoder.encode(transactionData.full_name, "UTF-8"));
             urlBuilder.append("&phone=").append(java.net.URLEncoder.encode(transactionData.phone, "UTF-8"));
             urlBuilder.append("&email=").append(java.net.URLEncoder.encode(transactionData.email, "UTF-8"));
             
-            if (transactionData.memo != null && !transactionData.memo.isEmpty()) {
-                urlBuilder.append("&memo=").append(java.net.URLEncoder.encode(transactionData.memo, "UTF-8"));
-            }
             if (transactionData.return_url != null && !transactionData.return_url.isEmpty()) {
                 urlBuilder.append("&return_url=").append(java.net.URLEncoder.encode(transactionData.return_url, "UTF-8"));
             }
+            if (transactionData.webhook_url != null && !transactionData.webhook_url.isEmpty()) {
+                urlBuilder.append("&webhook_url=").append(java.net.URLEncoder.encode(transactionData.webhook_url, "UTF-8"));
+            }
+            if (transactionData.invoice_id != null && !transactionData.invoice_id.isEmpty()) {
+                urlBuilder.append("&invoice_id=").append(java.net.URLEncoder.encode(transactionData.invoice_id, "UTF-8"));
+            }
+            if (transactionData.language != null && !transactionData.language.isEmpty()) {
+                urlBuilder.append("&language=").append(java.net.URLEncoder.encode(transactionData.language, "UTF-8"));
+            }
+            if (transactionData.memo != null && !transactionData.memo.isEmpty()) {
+                urlBuilder.append("&memo=").append(java.net.URLEncoder.encode(transactionData.memo, "UTF-8"));
+            }
             urlBuilder.append("&redirect=").append(transactionData.redirect ? "yes" : "no");
+            
+            if (transactionData.keep_return_url != null) {
+                urlBuilder.append("&keep_return_url=").append(transactionData.keep_return_url ? "True" : "False");
+            }
             
             String fullUrl = urlBuilder.toString();
             
@@ -496,7 +542,43 @@ public class SofizPayStellarSDK {
                 
                 if (response.isSuccessful()) {
                     Map<String, Object> responseData = gson.fromJson(responseBody, Map.class);
-                    return new CIBTransactionResult(true, "CIB transaction completed successfully", responseData);
+                    String paymentUrl = null;
+                    if (responseData != null) {
+                        if (responseData.get("payment_url") != null) {
+                            paymentUrl = responseData.get("payment_url").toString();
+                        } else if (responseData.get("cib_response") instanceof Map) {
+                            Map<?, ?> cibResp = (Map<?, ?>) responseData.get("cib_response");
+                            if (cibResp.get("formUrl") != null) {
+                                paymentUrl = cibResp.get("formUrl").toString();
+                            }
+                        }
+                    }
+                    String cibTxId = null;
+                    if (responseData != null && responseData.get("cib_transaction_id") != null) {
+                        Object val = responseData.get("cib_transaction_id");
+                        if (val instanceof Number) {
+                            cibTxId = new BigDecimal(val.toString()).toPlainString();
+                        } else {
+                            cibTxId = val.toString();
+                        }
+                    }
+                    String txId = (responseData != null && responseData.get("transaction_id") != null) ? responseData.get("transaction_id").toString() : null;
+                    String orderId = null;
+                    if (responseData != null && responseData.get("order_id") != null) {
+                        Object val = responseData.get("order_id");
+                        if (val instanceof Number) {
+                            orderId = new BigDecimal(val.toString()).toPlainString();
+                        } else {
+                            orderId = val.toString();
+                        }
+                    }
+                    String webhookUrl = (responseData != null && responseData.get("webhook_url") != null) ? responseData.get("webhook_url").toString() : transactionData.webhook_url;
+
+                    boolean isOk = responseData != null && !"error".equals(responseData.get("status")) && !Boolean.FALSE.equals(responseData.get("success"));
+
+                    return new CIBTransactionResult(isOk,
+                            isOk ? "CIB transaction completed successfully" : "Transaction error",
+                            responseData, paymentUrl, cibTxId, txId, orderId, webhookUrl, useSandbox);
                 } else {
                     return new CIBTransactionResult(false, "CIB transaction failed: " + response.code() + " - " + responseBody, null);
                 }
@@ -504,6 +586,51 @@ public class SofizPayStellarSDK {
             
         } catch (Exception e) {
             return new CIBTransactionResult(false, "Error making CIB transaction: " + e.getMessage(), null);
+        }
+    }
+
+    public CIBTransactionResult makeSandboxCIBTransaction(CIBTransactionData transactionData) {
+        transactionData.is_sandbox = true;
+        return makeCIBTransaction(transactionData);
+    }
+
+    public CIBStatusResult checkCIBStatus(String cibTransactionId, Boolean isSandbox) {
+        boolean useSandbox = isSandbox != null ? isSandbox : this.isSandbox;
+        return _checkCIBStatusRequest(cibTransactionId, useSandbox);
+    }
+
+    public CIBStatusResult checkCIBStatus(String cibTransactionId) {
+        return checkCIBStatus(cibTransactionId, null);
+    }
+
+    public CIBStatusResult checkSandboxCIBStatus(String cibTransactionId) {
+        return checkCIBStatus(cibTransactionId, true);
+    }
+
+    private CIBStatusResult _checkCIBStatusRequest(String cibTransactionId, boolean useSandbox) {
+        try {
+            String baseUrl = useSandbox
+                    ? "https://sofizpay.com/sandbox/cib-transaction-check/"
+                    : "https://www.sofizpay.com/cib-transaction-check/";
+            String url = baseUrl + "?order_number=" + java.net.URLEncoder.encode(cibTransactionId, "UTF-8");
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .get()
+                    .addHeader("Accept", "application/json")
+                    .build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                String responseBody = response.body() != null ? response.body().string() : "";
+                if (response.isSuccessful()) {
+                    Map<String, Object> responseData = gson.fromJson(responseBody, Map.class);
+                    return new CIBStatusResult(true, "CIB status retrieved successfully", responseData);
+                } else {
+                    return new CIBStatusResult(false, "Failed to retrieve status: " + response.code() + " - " + responseBody, null);
+                }
+            }
+        } catch (Exception e) {
+            return new CIBStatusResult(false, "Error checking CIB status: " + e.getMessage(), null);
         }
     }
     
@@ -558,9 +685,164 @@ public class SofizPayStellarSDK {
             return false;
         }
     }
-    
-    
- 
+
+    public boolean verifyWebhookSignature(Map<String, Object> webhookPayload) {
+        if (webhookPayload == null) {
+            return false;
+        }
+        String message = webhookPayload.get("message") != null ? webhookPayload.get("message").toString() : "";
+        String signature = "";
+        if (webhookPayload.containsKey("signature_url_safe") && webhookPayload.get("signature_url_safe") != null) {
+            signature = webhookPayload.get("signature_url_safe").toString();
+        } else if (webhookPayload.containsKey("signature") && webhookPayload.get("signature") != null) {
+            signature = webhookPayload.get("signature").toString();
+        }
+        return verifySignature(message, signature);
+    }
+
+    public boolean verifyWebhookSignature(String jsonPayload) {
+        if (jsonPayload == null || jsonPayload.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Map<String, Object> payloadMap = gson.fromJson(jsonPayload, Map.class);
+            return verifyWebhookSignature(payloadMap);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public ProductsResult getProducts(String encryptedSecretKey) {
+        try {
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest.Builder reqBuilder = HttpRequest.newBuilder()
+                    .uri(URI.create("https://sofizpay.com/services/get_products/"))
+                    .header("Accept", "application/json")
+                    .header("Content-Type", "application/json");
+
+            if (encryptedSecretKey != null && !encryptedSecretKey.isEmpty()) {
+                Map<String, String> bodyMap = new HashMap<>();
+                bodyMap.put("encrypted_sk", encryptedSecretKey);
+                reqBuilder.method("GET", HttpRequest.BodyPublishers.ofString(gson.toJson(bodyMap)));
+            } else {
+                reqBuilder.GET();
+            }
+
+            HttpResponse<String> response = client.send(reqBuilder.build(), HttpResponse.BodyHandlers.ofString());
+            String bodyStr = response.body() != null ? response.body() : "";
+            if (response.statusCode() == 200) {
+                Object parsed = gson.fromJson(bodyStr, Object.class);
+                return new ProductsResult(true, "Products fetched successfully", parsed);
+            } else {
+                return new ProductsResult(false, "HTTP " + response.statusCode() + ": " + bodyStr, null);
+            }
+        } catch (Exception e) {
+            return new ProductsResult(false, "Error fetching products: " + e.getMessage(), null);
+        }
+    }
+
+    public ProductsResult getProducts() {
+        return getProducts(null);
+    }
+
+    public ServiceOperationResult rechargePhone(Map<String, Object> data) {
+        return _performServiceOperation(data);
+    }
+
+    public ServiceOperationResult rechargeInternet(Map<String, Object> data) {
+        return _performServiceOperation(data);
+    }
+
+    public ServiceOperationResult rechargeGame(Map<String, Object> data) {
+        return _performServiceOperation(data);
+    }
+
+    public ServiceOperationResult payBill(Map<String, Object> data) {
+        return _performServiceOperation(data);
+    }
+
+    private ServiceOperationResult _performServiceOperation(Map<String, Object> data) {
+        try {
+            RequestBody body = RequestBody.create(
+                    gson.toJson(data),
+                    MediaType.parse("application/json")
+            );
+            Request request = new Request.Builder()
+                    .url("https://www.sofizpay.com/services/operation_post")
+                    .post(body)
+                    .addHeader("Accept", "application/json")
+                    .addHeader("Content-Type", "application/json")
+                    .build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                String bodyStr = response.body() != null ? response.body().string() : "";
+                if (response.isSuccessful()) {
+                    Object parsed = gson.fromJson(bodyStr, Object.class);
+                    return new ServiceOperationResult(true, "Service operation executed successfully", parsed);
+                } else {
+                    return new ServiceOperationResult(false, "HTTP " + response.code() + ": " + bodyStr, null);
+                }
+            }
+        } catch (Exception e) {
+            return new ServiceOperationResult(false, "Error performing service operation: " + e.getMessage(), null);
+        }
+    }
+
+    public OperationHistoryResult getOperationHistory(String encryptedSecretKey, int limit, int offset) {
+        try {
+            String url = "https://sofizpay.com/services/operation-history/?encrypted_sk="
+                    + java.net.URLEncoder.encode(encryptedSecretKey, "UTF-8")
+                    + "&limit=" + limit + "&offset=" + offset;
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .get()
+                    .addHeader("Accept", "application/json")
+                    .build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                String bodyStr = response.body() != null ? response.body().string() : "";
+                if (response.isSuccessful()) {
+                    Object parsed = gson.fromJson(bodyStr, Object.class);
+                    return new OperationHistoryResult(true, "Operation history retrieved successfully", parsed);
+                } else {
+                    return new OperationHistoryResult(false, "HTTP " + response.code() + ": " + bodyStr, null);
+                }
+            }
+        } catch (Exception e) {
+            return new OperationHistoryResult(false, "Error fetching operation history: " + e.getMessage(), null);
+        }
+    }
+
+    public OperationHistoryResult getOperationHistory(String encryptedSecretKey) {
+        return getOperationHistory(encryptedSecretKey, 10, 0);
+    }
+
+    public OperationDetailsResult getOperationDetails(String operationId, String encryptedSecretKey) {
+        try {
+            String url = "https://sofizpay.com/services/operation-detail/" + operationId + "/?encrypted_sk="
+                    + java.net.URLEncoder.encode(encryptedSecretKey, "UTF-8");
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .get()
+                    .addHeader("Accept", "application/json")
+                    .build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                String bodyStr = response.body() != null ? response.body().string() : "";
+                if (response.isSuccessful()) {
+                    Object parsed = gson.fromJson(bodyStr, Object.class);
+                    return new OperationDetailsResult(true, "Operation details retrieved successfully", parsed);
+                } else {
+                    return new OperationDetailsResult(false, "HTTP " + response.code() + ": " + bodyStr, null);
+                }
+            }
+        } catch (Exception e) {
+            return new OperationDetailsResult(false, "Error fetching operation details: " + e.getMessage(), null);
+        }
+    }
+
     public FundResult fundAccountFromFaucet(String accountId) {
         if (!isTestnet) {
             return new FundResult(false, "Faucet funding only available on testnet");
@@ -744,15 +1026,53 @@ public class SofizPayStellarSDK {
         public String email;
         public String memo;
         public String return_url;
-        public boolean redirect = true;
+        public String webhook_url;
+        public String invoice_id;
+        public String language;
+        public boolean redirect = false;
+        public Boolean keep_return_url;
+        public Boolean is_sandbox;
+        public Boolean isSandbox;
     }
     
     public static class CIBTransactionResult {
         public boolean success;
         public String message;
         public Map<String, Object> data;
+        public String payment_url;
+        public String cib_transaction_id;
+        public String transaction_id;
+        public String order_id;
+        public String webhook_url;
+        public boolean is_sandbox;
         
         public CIBTransactionResult(boolean success, String message, Map<String, Object> data) {
+            this.success = success;
+            this.message = message;
+            this.data = data;
+        }
+
+        public CIBTransactionResult(boolean success, String message, Map<String, Object> data,
+                                    String payment_url, String cib_transaction_id, String transaction_id,
+                                    String order_id, String webhook_url, boolean is_sandbox) {
+            this.success = success;
+            this.message = message;
+            this.data = data;
+            this.payment_url = payment_url;
+            this.cib_transaction_id = cib_transaction_id;
+            this.transaction_id = transaction_id;
+            this.order_id = order_id;
+            this.webhook_url = webhook_url;
+            this.is_sandbox = is_sandbox;
+        }
+    }
+
+    public static class CIBStatusResult {
+        public boolean success;
+        public String message;
+        public Map<String, Object> data;
+
+        public CIBStatusResult(boolean success, String message, Map<String, Object> data) {
             this.success = success;
             this.message = message;
             this.data = data;
@@ -770,7 +1090,55 @@ public class SofizPayStellarSDK {
             this.data = data;
         }
     }
-    
+
+    public static class ProductsResult {
+        public boolean success;
+        public String message;
+        public Object data;
+
+        public ProductsResult(boolean success, String message, Object data) {
+            this.success = success;
+            this.message = message;
+            this.data = data;
+        }
+    }
+
+    public static class ServiceOperationResult {
+        public boolean success;
+        public String message;
+        public Object data;
+
+        public ServiceOperationResult(boolean success, String message, Object data) {
+            this.success = success;
+            this.message = message;
+            this.data = data;
+        }
+    }
+
+    public static class OperationHistoryResult {
+        public boolean success;
+        public String message;
+        public Object data;
+
+        public OperationHistoryResult(boolean success, String message, Object data) {
+            this.success = success;
+            this.message = message;
+            this.data = data;
+        }
+    }
+
+    public static class OperationDetailsResult {
+        public boolean success;
+        public String message;
+        public Object data;
+
+        public OperationDetailsResult(boolean success, String message, Object data) {
+            this.success = success;
+            this.message = message;
+            this.data = data;
+        }
+    }
+
     public static class FundResult {
         public boolean success;
         public String message;
