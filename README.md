@@ -70,14 +70,14 @@ SofizPay SDK is a comprehensive Java/Kotlin library for secure payment processin
 ### Gradle (Groovy)
 ```gradle
 dependencies {
-    implementation 'io.github.kenandarabeh:sofizpay-sdk-java:1.0.5-SNAPSHOT'
+    implementation 'io.github.kenandarabeh:sofizpay-sdk-java:1.1.0'
 }
 ```
 
 ### Gradle (Kotlin DSL)
 ```kotlin
 dependencies {
-    implementation("io.github.kenandarabeh:sofizpay-sdk-java:1.0.5-SNAPSHOT")
+    implementation("io.github.kenandarabeh:sofizpay-sdk-java:1.1.0")
 }
 ```
 
@@ -86,13 +86,13 @@ dependencies {
 <dependency>
   <groupId>io.github.kenandarabeh</groupId>
   <artifactId>sofizpay-sdk-java</artifactId>
-  <version>1.0.5-SNAPSHOT</version>
+  <version>1.1.0</version>
 </dependency>
 ```
 
 ### Build from Source
 ```bash
-git clone https://github.com/kenandarabeh/sofizpay-sdk-java.git
+git clone https://github.com/SofizPay/sofizpay-java-sdk.git
 cd sofizpay-sdk-java
 ./gradlew build
 ```

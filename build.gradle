@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'io.github.kenandarabeh'
-version = '1.0.5-SNAPSHOT'
+version = '1.1.0'
 
 // Task to compile Java examples
 task compileJavaExamples(type: JavaCompile) {
@@ -166,7 +166,7 @@ publishing {
             pom {
                 name = 'SofizPay SDK for Java/Kotlin'
                 description = 'A powerful Java/Kotlin SDK for Stellar blockchain DZT token payments with real-time transaction monitoring'
-                url = 'https://github.com/kenandarabeh/sofizpay-sdk-java'
+                url = 'https://github.com/SofizPay/sofizpay-java-sdk'
                 
                 licenses {
                     license {
@@ -178,21 +178,21 @@ publishing {
                 
                 developers {
                     developer {
-                        id = 'kenandarabeh'
+                        id = 'sofizpay'
                         name = 'SofizPay Team'
                         email = 'support@sofizpay.com'
                     }
                 }
                 
                 scm {
-                    url = 'https://github.com/kenandarabeh/sofizpay-sdk-java'
-                    connection = 'scm:git:git://github.com/kenandarabeh/sofizpay-sdk-java.git'
-                    developerConnection = 'scm:git:ssh://git@github.com/kenandarabeh/sofizpay-sdk-java.git'
+                    url = 'https://github.com/SofizPay/sofizpay-java-sdk'
+                    connection = 'scm:git:git://github.com/SofizPay/sofizpay-java-sdk.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/SofizPay/sofizpay-java-sdk.git'
                 }
                 
                 issueManagement {
                     system = 'GitHub Issues'
-                    url = 'https://github.com/kenandarabeh/sofizpay-sdk-java/issues'
+                    url = 'https://github.com/SofizPay/sofizpay-java-sdk/issues'
                 }
             }
         }
@@ -212,7 +212,7 @@ publishing {
         // GitHub Packages
         maven {
             name = "GitHubPackages"
-            url = "https://maven.pkg.github.com/kenandarabeh/sofizpay-sdk-java"
+            url = "https://maven.pkg.github.com/SofizPay/sofizpay-java-sdk"
             credentials {
                 username = project.findProperty("GITHUB_USERNAME") ?: System.getenv("GITHUB_USERNAME")
                 password = project.findProperty("GITHUB_TOKEN") ?: System.getenv("GITHUB_TOKEN")
