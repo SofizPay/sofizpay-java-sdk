@@ -1,14 +1,14 @@
 # SofizPay SDK for Java/Kotlin
 
 <div align="center">
-  <img src="https://github.com/kenandarabeh/sofizpay-sdk-java/blob/main/assets/sofizpay-logo.png?raw=true" alt="SofizPay Logo" width="200" height="200">
+  <img src="https://github.com/SofizPay/sofizpay-java-sdk/blob/main/assets/sofizpay-logo.png?raw=true" alt="SofizPay Logo" width="200" height="200">
   
   <h3>🚀 A powerful Java/Kotlin SDK for SofizPay payment processing</h3>
   
-  [![Maven Central](https://img.shields.io/maven-central/v/io.github.omar7417/sofizpay-sdk-java.svg)](https://search.maven.org/artifact/io.github.omar7417/sofizpay-sdk-java)
+  [![Maven Central](https://img.shields.io/maven-central/v/io.github.omar7417/sofizpay-java-sdk.svg)](https://search.maven.org/artifact/io.github.omar7417/sofizpay-java-sdk)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![GitHub Stars](https://img.shields.io/github/stars/kenandarabeh/sofizpay-sdk-java.svg)](https://github.com/kenandarabeh/sofizpay-sdk-java/stargazers)
-  [![Issues](https://img.shields.io/github/issues/kenandarabeh/sofizpay-sdk-java.svg)](https://github.com/kenandarabeh/sofizpay-sdk-java/issues)
+  [![GitHub Stars](https://img.shields.io/github/stars/SofizPay/sofizpay-java-sdk.svg)](https://github.com/SofizPay/sofizpay-java-sdk/stargazers)
+  [![Issues](https://img.shields.io/github/issues/SofizPay/sofizpay-java-sdk.svg)](https://github.com/SofizPay/sofizpay-java-sdk/issues)
   [![Java 8+](https://img.shields.io/badge/Java-8%2B-orange.svg)](https://www.oracle.com/java/)
   [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.0-blue.svg)](https://kotlinlang.org/)
 </div>
@@ -70,14 +70,14 @@ SofizPay SDK is a comprehensive Java/Kotlin library for secure payment processin
 ### Gradle (Groovy)
 ```gradle
 dependencies {
-    implementation 'io.github.omar7417:sofizpay-sdk-java:1.2.0'
+    implementation 'io.github.omar7417:sofizpay-java-sdk:1.2.0'
 }
 ```
 
 ### Gradle (Kotlin DSL)
 ```kotlin
 dependencies {
-    implementation("io.github.omar7417:sofizpay-sdk-java:1.2.0")
+    implementation("io.github.omar7417:sofizpay-java-sdk:1.2.0")
 }
 ```
 
@@ -85,7 +85,7 @@ dependencies {
 ```xml
 <dependency>
   <groupId>io.github.omar7417</groupId>
-  <artifactId>sofizpay-sdk-java</artifactId>
+  <artifactId>sofizpay-java-sdk</artifactId>
   <version>1.2.0</version>
 </dependency>
 ```
@@ -93,7 +93,7 @@ dependencies {
 ### Build from Source
 ```bash
 git clone https://github.com/SofizPay/sofizpay-java-sdk.git
-cd sofizpay-sdk-java
+cd sofizpay-java-sdk
 ./gradlew build
 ```
 
@@ -779,8 +779,8 @@ We welcome contributions! Here's how to get started:
 ### Development Setup
 ```bash
 # Clone repository
-git clone https://github.com/kenandarabeh/sofizpay-sdk-java.git
-cd sofizpay-sdk-java
+git clone https://github.com/SofizPay/sofizpay-java-sdk.git
+cd sofizpay-java-sdk
 
 # Build project
 ./gradlew build
@@ -814,10 +814,10 @@ cd sofizpay-sdk-java
 
 ## 📞 Support
 
-- 📖 [Documentation](https://github.com/kenandarabeh/sofizpay-sdk-java#readme)
-- 🐛 [Report Issues](https://github.com/kenandarabeh/sofizpay-sdk-java/issues)
-- 💬 [Discussions](https://github.com/kenandarabeh/sofizpay-sdk-java/discussions)
-- ⭐ [Star the Project](https://github.com/kenandarabeh/sofizpay-sdk-java)
+- 📖 [Documentation](https://github.com/SofizPay/sofizpay-java-sdk#readme)
+- 🐛 [Report Issues](https://github.com/SofizPay/sofizpay-java-sdk/issues)
+- 💬 [Discussions](https://github.com/SofizPay/sofizpay-java-sdk/discussions)
+- ⭐ [Star the Project](https://github.com/SofizPay/sofizpay-java-sdk)
 - 📧 [Email Support](mailto:support@sofizpay.com)
 
 ### Getting Help
@@ -884,9 +884,9 @@ copies or substantial portions of the Software.
   <p>Start building with SofizPay SDK today!</p>
   
   <p>
-    <a href="https://github.com/kenandarabeh/sofizpay-sdk-java">GitHub</a> •
-    <a href="https://search.maven.org/artifact/io.github.omar7417/sofizpay-sdk-java">Maven Central</a> •
-    <a href="https://github.com/kenandarabeh/sofizpay-sdk-java/issues">Support</a> •
+    <a href="https://github.com/SofizPay/sofizpay-java-sdk">GitHub</a> •
+    <a href="https://search.maven.org/artifact/io.github.omar7417/sofizpay-java-sdk">Maven Central</a> •
+    <a href="https://github.com/SofizPay/sofizpay-java-sdk/issues">Support</a> •
     <a href="mailto:support@sofizpay.com">Contact</a>
   </p>
   
