@@ -5,7 +5,7 @@
   
   <h3>🚀 A powerful Java/Kotlin SDK for SofizPay payment processing</h3>
   
-  [![Maven Central](https://img.shields.io/maven-central/v/io.github.kenandarabeh/sofizpay-sdk-java.svg)](https://search.maven.org/artifact/io.github.kenandarabeh/sofizpay-sdk-java)
+  [![Maven Central](https://img.shields.io/maven-central/v/io.github.omar7417/sofizpay-sdk-java.svg)](https://search.maven.org/artifact/io.github.omar7417/sofizpay-sdk-java)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![GitHub Stars](https://img.shields.io/github/stars/kenandarabeh/sofizpay-sdk-java.svg)](https://github.com/kenandarabeh/sofizpay-sdk-java/stargazers)
   [![Issues](https://img.shields.io/github/issues/kenandarabeh/sofizpay-sdk-java.svg)](https://github.com/kenandarabeh/sofizpay-sdk-java/issues)
@@ -70,21 +70,21 @@ SofizPay SDK is a comprehensive Java/Kotlin library for secure payment processin
 ### Gradle (Groovy)
 ```gradle
 dependencies {
-    implementation 'io.github.kenandarabeh:sofizpay-sdk-java:1.2.0'
+    implementation 'io.github.omar7417:sofizpay-sdk-java:1.2.0'
 }
 ```
 
 ### Gradle (Kotlin DSL)
 ```kotlin
 dependencies {
-    implementation("io.github.kenandarabeh:sofizpay-sdk-java:1.2.0")
+    implementation("io.github.omar7417:sofizpay-sdk-java:1.2.0")
 }
 ```
 
 ### Maven
 ```xml
 <dependency>
-  <groupId>io.github.kenandarabeh</groupId>
+  <groupId>io.github.omar7417</groupId>
   <artifactId>sofizpay-sdk-java</artifactId>
   <version>1.2.0</version>
 </dependency>
@@ -885,7 +885,7 @@ copies or substantial portions of the Software.
   
   <p>
     <a href="https://github.com/kenandarabeh/sofizpay-sdk-java">GitHub</a> •
-    <a href="https://search.maven.org/artifact/io.github.kenandarabeh/sofizpay-sdk-java">Maven Central</a> •
+    <a href="https://search.maven.org/artifact/io.github.omar7417/sofizpay-sdk-java">Maven Central</a> •
     <a href="https://github.com/kenandarabeh/sofizpay-sdk-java/issues">Support</a> •
     <a href="mailto:support@sofizpay.com">Contact</a>
   </p>

@@ -35,7 +35,7 @@ class SofizPayStellarSDK(
 ) : AutoCloseable {
     
     companion object {
-        private const val VERSION = "1.0.0-kotlin"
+        private const val VERSION = "1.2.0"
         private const val DZT_ASSET_CODE = "DZT"
         private const val DZT_ISSUER = "GCAZI7YBLIDJWIVEL7ETNAZGPP3LC24NO6KAOBWZHUERXQ7M5BC52DLV"
         private const val CUTOFF_DATE = "2025-07-18T16:14:16Z"

@@ -5,7 +5,7 @@ plugins {
     id 'signing'
 }
 
-group = 'io.github.kenandarabeh'
+group = 'io.github.omar7417'
 version = '1.2.0'
 
 // Task to compile Java examples
@@ -90,7 +90,7 @@ jar {
         attributes(
             'Implementation-Title': 'SofizPay SDK for Java/Kotlin',
             'Implementation-Version': project.version,
-            'Implementation-Vendor': 'kenandarabeh',
+            'Implementation-Vendor': 'SofizPay',
             'Created-By': "Gradle ${gradle.gradleVersion}",
             'Build-Jdk': "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})"
         )

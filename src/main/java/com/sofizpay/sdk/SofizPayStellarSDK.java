@@ -35,7 +35,7 @@ import java.time.Instant;
 
 public class SofizPayStellarSDK {
     
-    private static final String VERSION = "1.1.11";
+    private static final String VERSION = "1.2.0";
     private static final String DZT_ASSET_CODE = "DZT";
     private static final String DZT_ISSUER = "GCAZI7YBLIDJWIVEL7ETNAZGPP3LC24NO6KAOBWZHUERXQ7M5BC52DLV";
     
