@@ -700,6 +700,77 @@ public class SofizPayStellarSDK {
         return verifySignature(message, signature);
     }
 
+    /**
+     * Verify a CIB webhook end to end: the RSA signature over {@code message} AND that the
+     * unsigned top-level fields ({@code payment_status}, {@code amount}, {@code order_number})
+     * match the signed message. Use this before trusting any of those fields.
+     * <p>
+     * The signed message is {@code callbackUrl + payment_status + amount + order_number}.
+     *
+     * @param webhookPayload parsed webhook JSON body
+     * @param callbackUrl    your webhook URL as registered with SofizPay; when non-null/non-empty
+     *                       the message must match it exactly
+     * @return true only if the signature is valid and the fields are consistent
+     */
+    public boolean verifyWebhookPayload(Map<String, Object> webhookPayload, String callbackUrl) {
+        if (webhookPayload == null || !(webhookPayload.get("message") instanceof String)) {
+            return false;
+        }
+        if (!verifyWebhookSignature(webhookPayload)) {
+            return false;
+        }
+        String status = webhookFieldToString(webhookPayload.get("payment_status"));
+        String amount = webhookFieldToString(webhookPayload.get("amount"));
+        String orderNumber = webhookFieldToString(webhookPayload.get("order_number"));
+        if (status == null || status.isEmpty() || amount == null || amount.isEmpty()
+                || orderNumber == null || orderNumber.isEmpty()) {
+            return false;
+        }
+        String signedFields = status + amount + orderNumber;
+        String message = (String) webhookPayload.get("message");
+        if (callbackUrl != null && !callbackUrl.isEmpty()) {
+            return MessageDigest.isEqual(
+                    (callbackUrl + signedFields).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    message.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return message.length() > signedFields.length() && message.endsWith(signedFields);
+    }
+
+    public boolean verifyWebhookPayload(Map<String, Object> webhookPayload) {
+        return verifyWebhookPayload(webhookPayload, null);
+    }
+
+    public boolean verifyWebhookPayload(String jsonPayload, String callbackUrl) {
+        if (jsonPayload == null || jsonPayload.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> payloadMap = gson.fromJson(jsonPayload, Map.class);
+            return verifyWebhookPayload(payloadMap, callbackUrl);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** String as-is; integral numbers (Gson parses JSON numbers as Double) as plain digits; else null. */
+    private static String webhookFieldToString(Object value) {
+        if (value instanceof String) {
+            return (String) value;
+        }
+        if (value instanceof Integer || value instanceof Long || value instanceof Short || value instanceof Byte) {
+            return value.toString();
+        }
+        if (value instanceof Number) {
+            try {
+                return new java.math.BigDecimal(value.toString()).toBigIntegerExact().toString();
+            } catch (ArithmeticException | NumberFormatException e) {
+                return null; // fractional, NaN or infinite
+            }
+        }
+        return null;
+    }
+
     public boolean verifyWebhookSignature(String jsonPayload) {
         if (jsonPayload == null || jsonPayload.trim().isEmpty()) {
             return false;

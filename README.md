@@ -70,14 +70,14 @@ SofizPay SDK is a comprehensive Java/Kotlin library for secure payment processin
 ### Gradle (Groovy)
 ```gradle
 dependencies {
-    implementation 'io.github.kenandarabeh:sofizpay-sdk-java:1.1.0'
+    implementation 'io.github.kenandarabeh:sofizpay-sdk-java:1.2.0'
 }
 ```
 
 ### Gradle (Kotlin DSL)
 ```kotlin
 dependencies {
-    implementation("io.github.kenandarabeh:sofizpay-sdk-java:1.1.0")
+    implementation("io.github.kenandarabeh:sofizpay-sdk-java:1.2.0")
 }
 ```
 
@@ -86,7 +86,7 @@ dependencies {
 <dependency>
   <groupId>io.github.kenandarabeh</groupId>
   <artifactId>sofizpay-sdk-java</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
 </dependency>
 ```
 
@@ -289,6 +289,25 @@ if (isValid) {
     System.out.println("Signature is valid");
 }
 ```
+
+#### `verifyWebhookPayload()` - Verify CIB Webhooks (recommended)
+
+The RSA signature covers only the `message` string (`callback_url + payment_status + amount + order_number`).
+The top-level fields `payment_status`, `amount` and `order_number` are **not** signed by themselves, so
+`verifyWebhookSignature()` alone does not make them trustworthy. `verifyWebhookPayload()` checks the
+signature **and** that those fields match the signed `message`.
+
+```java
+// rawBody = the webhook request body as a JSON string
+String callbackUrl = "https://yourstore.com/api/cib-webhook/"; // optional (null to skip), recommended
+if (!sdk.verifyWebhookPayload(rawBody, callbackUrl)) {
+    // respond 400 and stop
+}
+// Safe to use payment_status / amount / order_number now.
+// Also check amount equals the amount stored for that order, and process each order only once.
+```
+
+`callbackUrl` must be the URL prefix exactly as it appears at the start of `message` in a real webhook (including any trailing `/`).
 
 ---
 

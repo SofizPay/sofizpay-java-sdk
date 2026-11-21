@@ -660,6 +660,65 @@ class SofizPayStellarSDK(
         return verifySignature(message, signature)
     }
 
+    /**
+     * Verify a CIB webhook end to end: the RSA signature over `message` AND that the
+     * unsigned top-level fields (`payment_status`, `amount`, `order_number`) match the
+     * signed message. Use this before trusting any of those fields.
+     *
+     * The signed message is `callbackUrl + payment_status + amount + order_number`.
+     *
+     * @param callbackUrl your webhook URL as registered with SofizPay; when non-empty the
+     *                    message must match it exactly
+     */
+    @JvmOverloads
+    fun verifyWebhookPayload(webhookPayload: Map<String, Any?>?, callbackUrl: String? = null): Boolean {
+        if (webhookPayload == null) return false
+        val message = webhookPayload["message"] as? String ?: return false
+        @Suppress("UNCHECKED_CAST")
+        val signedPayload = webhookPayload as Map<String, Any>
+        if (!verifyWebhookSignature(signedPayload)) return false
+
+        val status = webhookFieldToString(webhookPayload["payment_status"])
+        val amount = webhookFieldToString(webhookPayload["amount"])
+        val orderNumber = webhookFieldToString(webhookPayload["order_number"])
+        if (status.isNullOrEmpty() || amount.isNullOrEmpty() || orderNumber.isNullOrEmpty()) return false
+
+        val signedFields = status + amount + orderNumber
+        if (!callbackUrl.isNullOrEmpty()) {
+            return java.security.MessageDigest.isEqual(
+                (callbackUrl + signedFields).toByteArray(Charsets.UTF_8),
+                message.toByteArray(Charsets.UTF_8)
+            )
+        }
+        return message.length > signedFields.length && message.endsWith(signedFields)
+    }
+
+    @JvmOverloads
+    fun verifyWebhookPayload(jsonPayload: String?, callbackUrl: String? = null): Boolean {
+        if (jsonPayload.isNullOrBlank()) return false
+        return try {
+            @Suppress("UNCHECKED_CAST")
+            val payloadMap = gson.fromJson(jsonPayload, Map::class.java) as? Map<String, Any?>
+            verifyWebhookPayload(payloadMap, callbackUrl)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    /** String as-is; integral numbers (Gson parses JSON numbers as Double) as plain digits; else null. */
+    private fun webhookFieldToString(value: Any?): String? = when (value) {
+        is String -> value
+        is Int, is Long, is Short, is Byte -> value.toString()
+        is Number -> try {
+            java.math.BigDecimal(value.toString()).toBigIntegerExact().toString()
+        } catch (e: ArithmeticException) {
+            null
+        } catch (e: NumberFormatException) {
+            null
+        }
+        else -> null
+    }
+
     fun verifyWebhookSignature(jsonPayload: String?): Boolean {
         if (jsonPayload.isNullOrBlank()) return false
         return try {
