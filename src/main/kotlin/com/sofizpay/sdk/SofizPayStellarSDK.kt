@@ -35,7 +35,7 @@ class SofizPayStellarSDK(
 ) : AutoCloseable {
     
     companion object {
-        private const val VERSION = "1.2.0"
+        private const val VERSION = "1.2.1"
         private const val DZT_ASSET_CODE = "DZT"
         private const val DZT_ISSUER = "GCAZI7YBLIDJWIVEL7ETNAZGPP3LC24NO6KAOBWZHUERXQ7M5BC52DLV"
         private const val CUTOFF_DATE = "2025-07-18T16:14:16Z"
@@ -665,12 +665,14 @@ class SofizPayStellarSDK(
      * unsigned top-level fields (`payment_status`, `amount`, `order_number`) match the
      * signed message. Use this before trusting any of those fields.
      *
-     * The signed message is `callbackUrl + payment_status + amount + order_number`.
+     * The signed message is exactly `"cib" + payment_status + amount + order_number`
+     * (e.g. `cibsuccess50004790895316`), verified against real sandbox and production webhooks.
      *
-     * @param callbackUrl your webhook URL as registered with SofizPay; when non-empty the
-     *                    message must match it exactly
+     * @param callbackUrl deprecated, ignored: the callback URL is not part of the signed message.
+     *                    Kept only so code written for 1.2.0 keeps compiling.
      */
     @JvmOverloads
+    @Suppress("UNUSED_PARAMETER")
     fun verifyWebhookPayload(webhookPayload: Map<String, Any?>?, callbackUrl: String? = null): Boolean {
         if (webhookPayload == null) return false
         val message = webhookPayload["message"] as? String ?: return false
@@ -683,14 +685,11 @@ class SofizPayStellarSDK(
         val orderNumber = webhookFieldToString(webhookPayload["order_number"])
         if (status.isNullOrEmpty() || amount.isNullOrEmpty() || orderNumber.isNullOrEmpty()) return false
 
-        val signedFields = status + amount + orderNumber
-        if (!callbackUrl.isNullOrEmpty()) {
-            return java.security.MessageDigest.isEqual(
-                (callbackUrl + signedFields).toByteArray(Charsets.UTF_8),
-                message.toByteArray(Charsets.UTF_8)
-            )
-        }
-        return message.length > signedFields.length && message.endsWith(signedFields)
+        val expected = "cib$status$amount$orderNumber"
+        return java.security.MessageDigest.isEqual(
+            expected.toByteArray(Charsets.UTF_8),
+            message.toByteArray(Charsets.UTF_8)
+        )
     }
 
     @JvmOverloads

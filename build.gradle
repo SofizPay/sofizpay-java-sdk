@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'io.github.omar7417'
-version = '1.2.0'
+version = '1.2.1'
 
 // Task to compile Java examples
 task compileJavaExamples(type: JavaCompile) {

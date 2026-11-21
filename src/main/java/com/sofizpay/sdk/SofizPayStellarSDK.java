@@ -35,7 +35,7 @@ import java.time.Instant;
 
 public class SofizPayStellarSDK {
     
-    private static final String VERSION = "1.2.0";
+    private static final String VERSION = "1.2.1";
     private static final String DZT_ASSET_CODE = "DZT";
     private static final String DZT_ISSUER = "GCAZI7YBLIDJWIVEL7ETNAZGPP3LC24NO6KAOBWZHUERXQ7M5BC52DLV";
     
@@ -705,11 +705,12 @@ public class SofizPayStellarSDK {
      * unsigned top-level fields ({@code payment_status}, {@code amount}, {@code order_number})
      * match the signed message. Use this before trusting any of those fields.
      * <p>
-     * The signed message is {@code callbackUrl + payment_status + amount + order_number}.
+     * The signed message is exactly {@code "cib" + payment_status + amount + order_number}
+     * (e.g. {@code cibsuccess50004790895316}), verified against real sandbox and production webhooks.
      *
      * @param webhookPayload parsed webhook JSON body
-     * @param callbackUrl    your webhook URL as registered with SofizPay; when non-null/non-empty
-     *                       the message must match it exactly
+     * @param callbackUrl    deprecated, ignored: the callback URL is not part of the signed message.
+     *                       Kept only so code written for 1.2.0 keeps compiling.
      * @return true only if the signature is valid and the fields are consistent
      */
     public boolean verifyWebhookPayload(Map<String, Object> webhookPayload, String callbackUrl) {
@@ -726,14 +727,11 @@ public class SofizPayStellarSDK {
                 || orderNumber == null || orderNumber.isEmpty()) {
             return false;
         }
-        String signedFields = status + amount + orderNumber;
+        String expected = "cib" + status + amount + orderNumber;
         String message = (String) webhookPayload.get("message");
-        if (callbackUrl != null && !callbackUrl.isEmpty()) {
-            return MessageDigest.isEqual(
-                    (callbackUrl + signedFields).getBytes(java.nio.charset.StandardCharsets.UTF_8),
-                    message.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        }
-        return message.length() > signedFields.length() && message.endsWith(signedFields);
+        return MessageDigest.isEqual(
+                expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                message.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     public boolean verifyWebhookPayload(Map<String, Object> webhookPayload) {
